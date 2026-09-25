@@ -63,7 +63,8 @@ begin
     if not found then
       raise exception 'document not found' using errcode = 'KB404';
     end if;
-    if v_doc.version <> p_expected_version then
+    -- IS DISTINCT FROM: a null expected version is a conflict, not a pass.
+    if v_doc.version is distinct from p_expected_version then
       raise exception 'document was changed by another request' using errcode = 'KB409';
     end if;
     if p_chunks is null and (v_doc.title, v_doc.content) is distinct from (p_title, p_content) then

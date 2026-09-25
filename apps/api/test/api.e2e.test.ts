@@ -329,6 +329,19 @@ describe.skipIf(!available)('API against local Supabase', () => {
       expect(stale.status).toBe(409);
     });
 
+    it('treats a missing expected version as a conflict in save_document', async () => {
+      const doc = await createDocument(alice, 'Versioned', 'Some text.');
+      const { error } = await alice.db.rpc('save_document', {
+        p_id: doc.id,
+        p_expected_version: null,
+        p_title: 'Versioned',
+        p_content: 'Some text.',
+        p_tags: ['x'],
+        p_chunks: null,
+      });
+      expect(error?.code).toBe('KB409');
+    });
+
     it('refuses changed text without new chunks in save_document', async () => {
       const doc = await createDocument(alice, 'Guarded', 'Some text.');
       const { error } = await alice.db.rpc('save_document', {

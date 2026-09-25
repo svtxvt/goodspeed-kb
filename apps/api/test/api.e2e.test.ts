@@ -4,7 +4,7 @@
 
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
-import { AIProviderError, MockEmbeddingModel } from '@kb/ai';
+import { AIProviderError, type Message, MockChatModel, MockEmbeddingModel } from '@kb/ai';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -12,7 +12,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AppModule } from '../src/app.module.js';
 import { createUserClient } from '../src/common/supabase.js';
 import { loadConfig, loadEnvFile } from '../src/config.js';
-import { APP_CONFIG, EMBEDDING_MODEL } from '../src/tokens.js';
+import { APP_CONFIG, CHAT_MODEL, EMBEDDING_MODEL } from '../src/tokens.js';
 
 loadEnvFile();
 const supabaseUrl = process.env.SUPABASE_URL ?? '';
@@ -47,6 +47,16 @@ class FlakyEmbeddingModel extends MockEmbeddingModel {
   }
 }
 
+/** Chat model that records the prompts it receives. */
+class RecordingChatModel extends MockChatModel {
+  readonly prompts: Message[][] = [];
+
+  override async complete(messages: Message[]): Promise<string> {
+    this.prompts.push(messages);
+    return super.complete(messages);
+  }
+}
+
 interface TestUser {
   id: string;
   token: string;
@@ -72,6 +82,7 @@ async function signUp(label: string): Promise<TestUser> {
 describe.skipIf(!available)('API against local Supabase', () => {
   let app: INestApplication;
   let embeddings: FlakyEmbeddingModel;
+  let chat: RecordingChatModel;
   let alice: TestUser;
   let bob: TestUser;
 
@@ -86,11 +97,14 @@ describe.skipIf(!available)('API against local Supabase', () => {
 
   beforeAll(async () => {
     embeddings = new FlakyEmbeddingModel();
+    chat = new RecordingChatModel();
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(APP_CONFIG)
       .useValue(loadConfig({ ...process.env, AI_MOCK: 'true' }))
       .overrideProvider(EMBEDDING_MODEL)
       .useValue(embeddings)
+      .overrideProvider(CHAT_MODEL)
+      .useValue(chat)
       .compile();
     app = moduleRef.createNestApplication();
     await app.init();
@@ -171,6 +185,36 @@ describe.skipIf(!available)('API against local Supabase', () => {
       expect(match.data).toEqual([]);
     });
 
+    it('does not call the model when nothing relevant is retrieved', async () => {
+      const calls = chat.prompts.length;
+      const res = await api()
+        .post('/chat')
+        .set(as(alice))
+        .send({ question: 'What is the capital of Peru?' });
+      expect(res.body).toMatchObject({ grounded: false, citations: [] });
+      expect(chat.prompts.length).toBe(calls);
+    });
+
+    it('sends history and delimited sources, and uses the previous question for retrieval', async () => {
+      const res = await api()
+        .post('/chat')
+        .set(as(alice))
+        .send({
+          question: 'And when does it ship?',
+          history: [
+            { role: 'user', content: 'What is the launch codename?' },
+            { role: 'assistant', content: 'It is Bluebird [1].' },
+          ],
+        });
+      expect(res.body.grounded).toBe(true);
+      const prompt = chat.prompts.at(-1)!;
+      expect(prompt.map((m) => m.role)).toEqual(['system', 'user', 'assistant', 'user']);
+      expect(prompt[2]!.content).toBe('It is Bluebird.');
+      expect(prompt[3]!.content).toMatch(
+        /^<sources>\n\[1\] Alice private plans\n[\s\S]*<\/sources>\n\nQuestion: And when does it ship\?$/,
+      );
+    });
+
     it('answers Alice from her own document with a validated citation', async () => {
       const chat = await api()
         .post('/chat')
@@ -195,15 +239,12 @@ describe.skipIf(!available)('API against local Supabase', () => {
         .eq('document_id', doc.id);
 
       embeddings.failNext = true;
-      const res = await api()
-        .put(`/documents/${doc.id}`)
-        .set(as(alice))
-        .send({
-          title: 'Office guide',
-          content: 'The wifi password is tulip.',
-          tags: [],
-          version: 1,
-        });
+      const res = await api().put(`/documents/${doc.id}`).set(as(alice)).send({
+        title: 'Office guide',
+        content: 'The wifi password is tulip.',
+        tags: [],
+        version: 1,
+      });
       expect(res.status).toBe(503);
       expect(res.body.error).toBe('ai_unavailable');
 

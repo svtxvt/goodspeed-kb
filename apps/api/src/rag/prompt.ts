@@ -95,17 +95,26 @@ function excerpt(text: string, maxChars = 240): string {
 }
 
 /**
- * Citations the answer actually uses. Markers that do not match a source that
- * was sent to the model (e.g. an invented [9]) are dropped.
+ * Validates the answer's [n] markers against the sources that were sent to the
+ * model. Markers that match no source (an invented [9]) are removed from the
+ * text, so every citation the user sees resolves to a real chunk.
  */
-export function extractCitations(answer: string, sources: Source[]): CitationDto[] {
+export function resolveCitations(
+  answer: string,
+  sources: Source[],
+): { answer: string; citations: CitationDto[] } {
   const cited = new Set<number>();
-  for (const match of answer.matchAll(/\[(\d+(?:\s*,\s*\d+)*)\]/g)) {
-    for (const n of match[1]!.split(',').map(Number)) {
-      if (n >= 1 && n <= sources.length) cited.add(n);
-    }
-  }
-  return [...cited]
+  const cleaned = answer.replace(/\s?\[(\d+(?:\s*,\s*\d+)*)\]/g, (marker, numbers: string) => {
+    const valid = numbers
+      .split(',')
+      .map(Number)
+      .filter((n) => n >= 1 && n <= sources.length);
+    valid.forEach((n) => cited.add(n));
+    if (valid.length === 0) return '';
+    return `${marker.startsWith(' ') ? ' ' : ''}[${valid.join(', ')}]`;
+  });
+
+  const citations = [...cited]
     .sort((a, b) => a - b)
     .map((n) => {
       const source = sources[n - 1]!;
@@ -116,4 +125,5 @@ export function extractCitations(answer: string, sources: Source[]): CitationDto
         excerpt: excerpt(source.content),
       };
     });
+  return { answer: cleaned, citations };
 }

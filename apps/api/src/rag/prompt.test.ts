@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   buildMessages,
-  extractCitations,
+  resolveCitations,
   selectSources,
   SYSTEM_PROMPT,
   trimHistory,
@@ -89,24 +89,31 @@ describe('selectSources', () => {
   });
 });
 
-describe('extractCitations', () => {
+describe('resolveCitations', () => {
   const sources = [source(1), source(2), source(3)];
 
   it('returns cited sources once each, in order, with an excerpt', () => {
-    expect(extractCitations('B [2]. A [1][2]. C [3, 1].', sources)).toEqual([
-      { n: 1, documentId: 'doc-1', documentTitle: 'Doc 1', excerpt: 'Content of source 1.' },
-      { n: 2, documentId: 'doc-2', documentTitle: 'Doc 2', excerpt: 'Content of source 2.' },
-      { n: 3, documentId: 'doc-3', documentTitle: 'Doc 3', excerpt: 'Content of source 3.' },
-    ]);
+    const answer = 'B [2]. A [1][2]. C [3, 1].';
+    expect(resolveCitations(answer, sources)).toEqual({
+      answer,
+      citations: [
+        { n: 1, documentId: 'doc-1', documentTitle: 'Doc 1', excerpt: 'Content of source 1.' },
+        { n: 2, documentId: 'doc-2', documentTitle: 'Doc 2', excerpt: 'Content of source 2.' },
+        { n: 3, documentId: 'doc-3', documentTitle: 'Doc 3', excerpt: 'Content of source 3.' },
+      ],
+    });
   });
 
-  it('drops markers that do not match a retrieved source', () => {
-    expect(extractCitations('Made up [7] and [0].', sources)).toEqual([]);
+  it('removes markers that do not match a retrieved source from the answer', () => {
+    expect(resolveCitations('Made up [7] and [0]. Mixed [2, 9].', sources)).toEqual({
+      answer: 'Made up and. Mixed [2].',
+      citations: [expect.objectContaining({ n: 2 })],
+    });
   });
 
   it('shortens long excerpts', () => {
-    const [citation] = extractCitations('[1]', [source(1, 'word '.repeat(100))]);
-    expect(citation!.excerpt.length).toBeLessThanOrEqual(240);
-    expect(citation!.excerpt.endsWith('…')).toBe(true);
+    const { citations } = resolveCitations('[1]', [source(1, 'word '.repeat(100))]);
+    expect(citations[0]!.excerpt.length).toBeLessThanOrEqual(240);
+    expect(citations[0]!.excerpt.endsWith('…')).toBe(true);
   });
 });

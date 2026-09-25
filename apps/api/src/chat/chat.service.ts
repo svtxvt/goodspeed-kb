@@ -8,9 +8,9 @@ import { dbError, type MatchRow } from '../common/supabase.js';
 import type { AppConfig } from '../config.js';
 import {
   buildMessages,
-  extractCitations,
   NOT_FOUND_ANSWER,
   PROMPT_BUDGET,
+  resolveCitations,
   selectSources,
 } from '../rag/prompt.js';
 import { APP_CONFIG, CHAT_MODEL, EMBEDDING_MODEL } from '../tokens.js';
@@ -56,6 +56,6 @@ export class ChatService {
     }
 
     const answer = await this.chat.complete(buildMessages(question, history, sources));
-    return { answer, citations: extractCitations(answer, sources), grounded: true };
+    return { ...resolveCitations(answer, sources), grounded: true };
   }
 }

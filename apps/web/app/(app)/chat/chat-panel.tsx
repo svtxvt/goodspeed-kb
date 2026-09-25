@@ -16,6 +16,8 @@ interface Turn {
 // The conversation lives in sessionStorage under a key that includes the
 // verified user id: it survives navigation and reloads in this tab, another
 // account signing in here never sees it, and sign-out removes it.
+// useSyncExternalStore is React's way to read browser storage without a
+// server/client hydration mismatch; the change event re-renders after writes.
 const STORAGE_PREFIX = 'kb:chat-history:';
 const CHANGE_EVENT = 'kb:chat-history-change';
 const subscribe = (onChange: () => void) => {

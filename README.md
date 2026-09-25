@@ -1,8 +1,9 @@
 # Knowledge Base (RAG)
 
 A full-stack knowledge base: users sign in, write documents (plain text or Markdown), and ask
-questions that are answered **only** from their own documents, with citations that link back
-to the source.
+questions about them. The prompt instructs the model to answer only from the retrieved passages
+of the user's own documents and to cite them; citations link back to the source. Grounding is an
+instruction, not a guarantee: a model can still make mistakes.
 
 - **Monorepo:** pnpm workspaces + Turborepo
 - **Web:** Next.js 16 (App Router, Server Actions), Tailwind
@@ -135,7 +136,7 @@ AI_EMBEDDING_DIMENSIONS=768
 ```
 
 ```bash
-pnpm reindex   # re-embeds every document into "localhost:11434/nomic-embed-text:768"
+pnpm reindex   # re-embeds every document into "localhost:11434/v1/nomic-embed-text:768"
 ```
 
 Restart `pnpm dev` after editing `.env`. Every variable is validated at boot and a bad value
@@ -144,12 +145,13 @@ At boot the API also embeds one word: if the model's output size differs from
 `AI_EMBEDDING_DIMENSIONS` it refuses to start; if the provider is unreachable it only warns.
 
 **Embedding spaces and reindexing.** Vectors are only comparable inside one _embedding space_.
-Its id is `<host>/<model>:<dimensions>` (for example
-`api.openai.com/text-embedding-3-small:1536`): equal dimensions do not make two models
-compatible, and the same model name on another server is not guaranteed to be the same model.
+Its id is `<host><path>/<model>:<dimensions>`, taken from the normalized base URL (for example
+`api.openai.com/v1/text-embedding-3-small:1536`): equal dimensions do not make two models
+compatible, and the same model name on another endpoint is not guaranteed to be the same model.
 Every chunk stores its space id and search only looks at the active space, so after changing the
 embedding model or server, old documents are simply not found (never mixed) until
-`pnpm reindex` has run. If the same model moves to a new host, set `AI_EMBEDDING_SPACE` to keep
+`pnpm reindex` has run (or until each document is saved again). If the same model moves to a new
+endpoint, set `AI_EMBEDDING_SPACE` to keep
 the old space name (the dimension is always appended). Changing the chat provider never needs a
 reindex.
 
@@ -267,11 +269,14 @@ function (`save_document`) inserts or updates the document and replaces all of i
 transaction. If the provider fails, nothing is written and the editor keeps the unsaved text
 (fields are read-only while a save runs). A `version` column gives optimistic concurrency: an
 update names the version it was based on and a stale one gets `409 version_conflict`. Tags-only
-edits skip re-embedding; `save_document` refuses changed title or content without new chunks.
+edits skip re-embedding unless the document has no chunks in the active space; `save_document`
+refuses changed title or content without new chunks, and treats a missing expected version as a
+conflict.
 Because RLS lets users update their own rows directly through PostgREST, a trigger bumps the
 version on **every** update and drops the chunks when title or content change, so such a write
 can neither silently overwrite an open editor nor leave search returning text the document no
-longer contains (the document becomes searchable again on the next save or `pnpm reindex`).
+longer contains. The next save (even with unchanged text) or `pnpm reindex` makes it searchable
+again.
 Trade-off: saving waits for the embedding call; a background queue would make saves instant but
 adds a "saved but not yet searchable" state.
 
@@ -305,7 +310,9 @@ skipped, and `[n]` markers in the answer that match no retrieved source are remo
 
 **Chat history on the client.** The conversation lives in `sessionStorage` under a key that
 includes the verified user id: it survives navigation and reloads in the tab, another account
-signing in there does not see it, and sign-out removes it. The API stays stateless. Persistent
+signing in there does not see it, and sign-out removes it. Each request also names the user its
+history belongs to, and the API rejects it (`409 session_changed`) when the token is someone
+else's, e.g. an old tab after an account switch. The API stays stateless. Persistent
 conversations would be two more tables with the same RLS pattern.
 
 **Only the Next.js server calls the API.** Pages and Server Actions call NestJS with the user's
@@ -330,14 +337,14 @@ packages published less than a day ago.
 
 Each row lists only what the test suite (or a boot check) demonstrates.
 
-| Failure mode                                  | Handling                                                                                                                       | Demonstrated by                                                                                                        |
-| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------- |
-| **F1 Tenant leakage**                         | User-scoped client, RLS on every table, `SECURITY INVOKER` functions, composite FK on chunks                                   | e2e: a second user cannot list, read, update, delete or retrieve the first user's data, also directly via PostgREST    |
-| **F2 Failed or stale indexing**               | Embed first, one transaction, version check, trigger for writes around the API, chunks filtered by embedding space             | e2e: rollback on failed create/update, 409 on stale version, direct update bumps version and drops chunks, KB422 guard |
-| **F3 Unsupported answers / prompt injection** | No model call without relevant sources, delimited untrusted sources (mitigation), citations validated and invalid ones removed | unit: delimiters in content and titles, citation cleanup; e2e: no model call without context, prompt shape             |
-| Provider down, rate limited or misconfigured  | SDK retries + timeout, then 503 (nothing saved) or 502                                                                         | unit: status mapping; e2e: simulated outage; manual: boot warns                                                        |
-| Embedding dimension mismatch                  | Response validation; boot probe refuses to start                                                                               | unit: response validation; manual: boot against a fake server                                                          |
-| Long input                                    | 100k-character limit, oversized paragraphs and headings split or cut, bounded history and context                              | unit: chunker, source selection; e2e: size limit                                                                       |
+| Failure mode                                  | Handling                                                                                                                       | Demonstrated by                                                                                                                                                          |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **F1 Tenant leakage**                         | User-scoped client, RLS on every table, `SECURITY INVOKER` functions, composite FK on chunks                                   | e2e: a second user cannot list, read, update, delete or retrieve the first user's data, also directly via PostgREST; history sent under another user's token is rejected |
+| **F2 Failed or stale indexing**               | Embed first, one transaction, version check, trigger for writes around the API, chunks filtered by embedding space             | e2e: rollback on failed create/update, 409 on stale or missing version, direct update bumps version and drops chunks, next save restores search, KB422 guard             |
+| **F3 Unsupported answers / prompt injection** | No model call without relevant sources, delimited untrusted sources (mitigation), citations validated and invalid ones removed | unit: delimiters in content and titles, citation cleanup; e2e: no model call without context, prompt shape                                                               |
+| Provider down, rate limited or misconfigured  | SDK retries + timeout, then 503 (nothing saved) or 502                                                                         | unit: status mapping; e2e: simulated outage; manual: boot warns                                                                                                          |
+| Embedding dimension mismatch                  | Response validation; boot probe refuses to start                                                                               | unit: response validation; manual: boot against a fake server                                                                                                            |
+| Long input                                    | 100k-character limit, oversized paragraphs and headings split or cut, bounded history and context                              | unit: chunker, source selection; e2e: size limit                                                                                                                         |
 
 ---
 

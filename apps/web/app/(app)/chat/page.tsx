@@ -16,8 +16,8 @@ export default async function ChatPage() {
       <div>
         <h1 className="text-2xl font-semibold">Ask your documents</h1>
         <p className="text-sm text-slate-600">
-          Answers use only your documents and cite them. The conversation is kept in this browser
-          tab until you sign out.
+          The assistant is instructed to answer only from your documents and to cite them; check the
+          sources it shows. The conversation is kept in this browser tab until you sign out.
         </p>
       </div>
       <ChatPanel key={userId} userId={userId} />

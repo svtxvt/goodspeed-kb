@@ -5,5 +5,6 @@ packages:
 # pnpm 11 runs no dependency build scripts unless they are listed here.
 allowBuilds:
   '@swc/core': true
+  esbuild: true
   supabase: true
   unrs-resolver: false

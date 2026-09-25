@@ -31,16 +31,21 @@ describe('MockEmbeddingModel', () => {
 });
 
 describe('MockChatModel', () => {
-  it('quotes and cites the sources it was given', async () => {
+  it('quotes the source that best matches the question and cites it', async () => {
     const answer = await new MockChatModel().complete([
       { role: 'system', content: 'Cite sources like [1].' },
       {
         role: 'user',
         content:
-          '<sources>\n[1] Handbook\nLeave > Vacation\n\nVacation is 25 days.\n\n[2] Policy\nAsk your manager.\n</sources>\n\nQuestion: ?',
+          '<sources>\n[1] Policy\nAsk your manager first.\n\n[2] Handbook\nLeave > Vacation\n\nVacation is 25 days per year.\n</sources>\n\nQuestion: How many vacation days?',
       },
     ]);
-    expect(answer).toContain('"Vacation is 25 days." [1]');
-    expect(answer).toContain('See also [2].');
+    expect(answer).toContain('"Vacation is 25 days per year." [2]');
+    expect(answer).toContain('See also [1].');
+  });
+
+  it('says so when it was given no sources', async () => {
+    const answer = await new MockChatModel().complete([{ role: 'user', content: 'Question: hi' }]);
+    expect(answer).toMatch(/no sources/);
   });
 });

@@ -8,7 +8,7 @@ const envSchema = z.object({
   SUPABASE_PUBLISHABLE_KEY: z.string().min(1),
   RAG_MATCH_COUNT: z.coerce.number().int().min(1).max(20).default(6),
   /** Depends on the embedding model: calibrate it when you change models. */
-  RAG_MIN_SIMILARITY: z.coerce.number().min(-1).max(1).default(0.3),
+  RAG_MIN_SIMILARITY: z.coerce.number().min(-1).max(1).optional(),
 });
 
 export interface AppConfig {
@@ -44,10 +44,13 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     );
   }
   const values = parsed.data;
+  const ai = parseAIConfig(env);
+  // Lexical mock vectors score lower than real embeddings for the same match.
+  const minSimilarity = values.RAG_MIN_SIMILARITY ?? (ai.mock ? 0.15 : 0.25);
   return {
     port: values.PORT,
     supabase: { url: values.SUPABASE_URL.replace(/\/+$/, ''), publishableKey: values.SUPABASE_PUBLISHABLE_KEY },
-    rag: { matchCount: values.RAG_MATCH_COUNT, minSimilarity: values.RAG_MIN_SIMILARITY },
-    ai: parseAIConfig(env),
+    rag: { matchCount: values.RAG_MATCH_COUNT, minSimilarity },
+    ai,
   };
 }

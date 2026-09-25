@@ -57,26 +57,35 @@ export class MockEmbeddingModel implements EmbeddingModel {
 }
 
 /**
- * Answers with a quote from the first source and cites up to two sources. It
- * reads sources as blocks starting with a "[n] Title" line in the last user
- * message, which is how the API formats its context.
+ * Quotes the source that shares the most words with the question and cites it
+ * (plus the runner-up). It reads sources as blocks starting with a "[n] Title"
+ * line and the question after "Question:" in the last user message, which is
+ * how the API formats its prompt.
  */
 export class MockChatModel implements ChatModel {
   async complete(messages: Message[]): Promise<string> {
-    const lastUser = [...messages].reverse().find((message) => message.role === 'user');
+    const prompt = [...messages].reverse().find((message) => message.role === 'user')?.content ?? '';
+    const question = new Set(tokenize(/Question:([\s\S]*)$/.exec(prompt)?.[1] ?? ''));
     const sources = [
-      ...(lastUser?.content ?? '').matchAll(/^\[(\d+)\][^\n]*\n([\s\S]*?)(?=\n\n\[\d+\]|\n<\/|$(?![\s\S]))/gm),
-    ];
-    const [first, second] = sources;
-    if (!first) return 'Mock answer: there are no sources to answer from.';
+      ...prompt.matchAll(/^\[(\d+)\][^\n]*\n([\s\S]*?)(?=\n\n\[\d+\]|\n<\/sources>|$(?![\s\S]))/gm),
+    ]
+      .map((match) => ({
+        n: match[1]!,
+        text: match[2]!,
+        overlap: tokenize(match[2]!).filter((token) => question.has(token)).length,
+      }))
+      .sort((a, b) => b.overlap - a.overlap);
 
-    // Skip short lines such as the "Setup > Docker" heading path.
-    const lines = first[2]!.split('\n').map((line) => line.trim()).filter(Boolean);
-    const quote = (lines.find((line) => line.split(/\s+/).length >= 4) ?? lines[0] ?? '').slice(0, 160);
-    const seeAlso = second ? ` See also [${second[1]}].` : '';
+    const [best, runnerUp] = sources;
+    if (!best) return 'Mock answer: there are no sources to answer from.';
+
+    // Quote the first full sentence, skipping the "Setup > Docker" heading line.
+    const lines = best.text.split('\n').map((line) => line.trim()).filter(Boolean);
+    const quote = (lines.find((line) => /[.!?:]$/.test(line)) ?? lines[0] ?? '').slice(0, 160);
+    const seeAlso = runnerUp ? ` See also [${runnerUp.n}].` : '';
     return (
       `Mock answer (no language model is configured). ` +
-      `The closest passage in your documents says: "${quote}" [${first[1]}].${seeAlso}`
+      `The closest passage in your documents says: "${quote}" [${best.n}].${seeAlso}`
     );
   }
 }

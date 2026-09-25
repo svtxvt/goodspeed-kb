@@ -72,10 +72,23 @@ export class DocumentsService {
       });
     }
     // Title is part of the embedded text, so either change means re-embedding.
-    // A tags-only edit keeps the existing chunks (p_chunks = null).
+    // Otherwise the existing chunks are kept (p_chunks = null), unless there
+    // are none in the active space (dropped by a direct update, or embedded by
+    // another model): then this save re-indexes the document.
     const changed = current.title !== input.title || current.content !== input.content;
-    const chunks = changed ? await embedDocument(input, this.embeddings) : null;
+    const reembed = changed || !(await this.hasChunksInActiveSpace(db, id));
+    const chunks = reembed ? await embedDocument(input, this.embeddings) : null;
     return this.save(db, id, input.version, input, chunks);
+  }
+
+  private async hasChunksInActiveSpace(db: SupabaseClient, id: string): Promise<boolean> {
+    const { count, error } = await db
+      .from('document_chunks')
+      .select('id', { count: 'exact', head: true })
+      .eq('document_id', id)
+      .eq('embedding_space', this.embeddings.space.id);
+    if (error) throw dbError(error);
+    return (count ?? 0) > 0;
   }
 
   async remove(db: SupabaseClient, id: string): Promise<void> {

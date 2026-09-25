@@ -342,6 +342,39 @@ describe.skipIf(!available)('API against local Supabase', () => {
       expect(error?.code).toBe('KB409');
     });
 
+    it('restores searchability on the next save after a direct update dropped the chunks', async () => {
+      const doc = await createDocument(alice, 'Greenhouse', 'Tomatoes need watering twice a day.');
+      await alice.db
+        .from('documents')
+        .update({ content: 'Basil needs watering daily.' })
+        .eq('id', doc.id);
+      const dropped = await alice.db.from('document_chunks').select('id').eq('document_id', doc.id);
+      expect(dropped.data).toEqual([]);
+
+      // Same text, only a tag added: the save still re-embeds because nothing is indexed.
+      const saved = await api()
+        .put(`/documents/${doc.id}`)
+        .set(as(alice))
+        .send({
+          title: 'Greenhouse',
+          content: 'Basil needs watering daily.',
+          tags: ['garden'],
+          version: 2,
+        });
+      expect(saved.status).toBe(200);
+      const chunks = await alice.db
+        .from('document_chunks')
+        .select('content')
+        .eq('document_id', doc.id);
+      expect(chunks.data).toEqual([{ content: 'Basil needs watering daily.' }]);
+
+      const chat = await api()
+        .post('/chat')
+        .set(as(alice))
+        .send({ userId: alice.id, question: 'How often does basil need watering?' });
+      expect(chat.body.citations).toEqual([expect.objectContaining({ documentId: doc.id })]);
+    });
+
     it('refuses changed text without new chunks in save_document', async () => {
       const doc = await createDocument(alice, 'Guarded', 'Some text.');
       const { error } = await alice.db.rpc('save_document', {

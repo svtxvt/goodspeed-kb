@@ -8,7 +8,7 @@ import { saveDocument } from './actions';
 
 /**
  * Inputs are controlled so a failed save (provider down, version conflict)
- * never loses the text the user typed.
+ * never loses the text the user typed, and read-only while a save runs.
  */
 export function DocumentForm({ document }: { document?: DocumentDto }) {
   const [state, action, pending] = useActionState(saveDocument, {});
@@ -26,73 +26,77 @@ export function DocumentForm({ document }: { document?: DocumentDto }) {
         </>
       )}
 
-      <div>
-        <label htmlFor="title" className="label">
-          Title
-        </label>
-        <input
-          id="title"
-          name="title"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          maxLength={DOCUMENT_LIMITS.titleMax}
-          required
-          aria-invalid={Boolean(errors.title)}
-          aria-describedby={errors.title ? 'title-error' : undefined}
-          className="input"
-        />
-        {errors.title && (
-          <p id="title-error" className="field-error">
-            {errors.title}
-          </p>
-        )}
-      </div>
+      {/* Read-only while saving: embedding takes a moment, and text typed now
+          would be lost when the page reloads the saved version. */}
+      <fieldset disabled={pending} className="space-y-5">
+        <div>
+          <label htmlFor="title" className="label">
+            Title
+          </label>
+          <input
+            id="title"
+            name="title"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            maxLength={DOCUMENT_LIMITS.titleMax}
+            required
+            aria-invalid={Boolean(errors.title)}
+            aria-describedby={errors.title ? 'title-error' : undefined}
+            className="input"
+          />
+          {errors.title && (
+            <p id="title-error" className="field-error">
+              {errors.title}
+            </p>
+          )}
+        </div>
 
-      <div>
-        <label htmlFor="tags" className="label">
-          Tags <span className="font-normal text-slate-600">(optional, comma-separated)</span>
-        </label>
-        <input
-          id="tags"
-          name="tags"
-          value={tags}
-          onChange={(e) => setTags(e.target.value)}
-          placeholder="policy, hr"
-          aria-invalid={Boolean(errors.tags)}
-          aria-describedby={errors.tags ? 'tags-error' : undefined}
-          className="input"
-        />
-        {errors.tags && (
-          <p id="tags-error" className="field-error">
-            {errors.tags}
-          </p>
-        )}
-      </div>
+        <div>
+          <label htmlFor="tags" className="label">
+            Tags <span className="font-normal text-slate-600">(optional, comma-separated)</span>
+          </label>
+          <input
+            id="tags"
+            name="tags"
+            value={tags}
+            onChange={(e) => setTags(e.target.value)}
+            placeholder="policy, hr"
+            aria-invalid={Boolean(errors.tags)}
+            aria-describedby={errors.tags ? 'tags-error' : undefined}
+            className="input"
+          />
+          {errors.tags && (
+            <p id="tags-error" className="field-error">
+              {errors.tags}
+            </p>
+          )}
+        </div>
 
-      <div>
-        <label htmlFor="content" className="label">
-          Content <span className="font-normal text-slate-600">(plain text or Markdown)</span>
-        </label>
-        <textarea
-          id="content"
-          name="content"
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          rows={18}
-          aria-invalid={Boolean(errors.content)}
-          aria-describedby={`content-count${errors.content ? ' content-error' : ''}`}
-          className="input font-mono"
-        />
-        <p id="content-count" className="mt-1 text-xs text-slate-600">
-          {content.length.toLocaleString('en-US')} /{' '}
-          {DOCUMENT_LIMITS.contentMax.toLocaleString('en-US')} characters
-        </p>
-        {errors.content && (
-          <p id="content-error" className="field-error">
-            {errors.content}
+        <div>
+          <label htmlFor="content" className="label">
+            Content <span className="font-normal text-slate-600">(plain text or Markdown)</span>
+          </label>
+          <textarea
+            id="content"
+            name="content"
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            rows={18}
+            aria-invalid={Boolean(errors.content)}
+            aria-describedby={`content-count${errors.content ? ' content-error' : ''}`}
+            className="input font-mono"
+          />
+          <p id="content-count" className="mt-1 text-xs text-slate-600">
+            {content.length.toLocaleString('en-US')} /{' '}
+            {DOCUMENT_LIMITS.contentMax.toLocaleString('en-US')} characters
           </p>
-        )}
-      </div>
+          {errors.content && (
+            <p id="content-error" className="field-error">
+              {errors.content}
+            </p>
+          )}
+        </div>
+      </fieldset>
 
       <div aria-live="polite">
         {state.error && (

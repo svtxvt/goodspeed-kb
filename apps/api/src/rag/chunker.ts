@@ -17,7 +17,7 @@ export function estimateTokens(text: string): number {
   return Math.ceil(text.length / 4);
 }
 
-/** Longer heading paths are cut, so the prefix can never crowd out the text. */
+/** Longer heading-path prefixes are cut, so they can never crowd out the text. */
 const MAX_HEADING_PATH_CHARS = 300;
 
 interface Section {
@@ -134,10 +134,13 @@ export function chunkMarkdown(
   const chunks: string[] = [];
 
   for (const section of parseSections(markdown)) {
-    let path = section.headingPath.join(' > ');
-    if (path.length > MAX_HEADING_PATH_CHARS)
-      path = `${path.slice(0, MAX_HEADING_PATH_CHARS - 1)}…`;
-    if (section.blocks.length === 0) {
+    // The heading path is a label copied into every chunk, so it is capped; a
+    // cut heading keeps its full text as the section's first block instead.
+    const fullPath = section.headingPath.join(' > ');
+    const cut = fullPath.length > MAX_HEADING_PATH_CHARS;
+    const path = cut ? `${fullPath.slice(0, MAX_HEADING_PATH_CHARS - 1)}…` : fullPath;
+    const blocks = cut ? [fullPath, ...section.blocks] : section.blocks;
+    if (blocks.length === 0) {
       chunks.push(path); // heading-only section
       continue;
     }
@@ -145,7 +148,7 @@ export function chunkMarkdown(
     const budget = Math.max(maxChars - prefix.length, 200);
     // Leave room for the overlap carried into the next chunk.
     const pieceMax = Math.max(budget - overlapChars - 2, 100);
-    const pieces = section.blocks.flatMap((block) =>
+    const pieces = blocks.flatMap((block) =>
       block.length <= pieceMax ? [block] : splitOversized(block, pieceMax),
     );
 

@@ -109,11 +109,14 @@ describe('chunkMarkdown', () => {
     expect(chunkMarkdown('# A\n## B\ntext\n## C')).toEqual(['A > B\n\ntext', 'A > C']);
   });
 
-  it('bounds a huge heading so every chunk stays within the budget', () => {
-    const chunks = chunkMarkdown(`# ${'h'.repeat(10_000)}\n${sentences(20)}`);
-    expect(chunks.length).toBeGreaterThan(0);
+  it('caps the copied heading prefix but keeps the full heading text as content', () => {
+    const heading = `${'alpha '.repeat(2_000)}omega`;
+    const chunks = chunkMarkdown(`# ${heading}\n${sentences(20)}`);
     for (const chunk of chunks) expect(chunk.length).toBeLessThanOrEqual(MAX_CHARS);
-    expect(chunks[0]).toMatch(/^h{299}…\n\nSentence number 0/);
+    expect(chunks[0]).toMatch(/^(alpha ){49}alpha…\n\nalpha alpha/); // capped prefix, then content
+    expect(chunks.some((chunk) => chunk.includes('omega'))).toBe(true);
+    expect(chunks.join(' ').match(/alpha/g)!.length).toBeGreaterThanOrEqual(2_000);
+    expect(chunks.some((chunk) => chunk.includes('Sentence number 19'))).toBe(true);
   });
 
   it('normalises Windows line endings', () => {

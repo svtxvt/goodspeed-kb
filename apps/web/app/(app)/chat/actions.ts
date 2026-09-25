@@ -4,7 +4,9 @@ import { type ChatRequest, chatRequestSchema, type ChatResponseDto } from '@kb/s
 
 import { api, errorMessage } from '@/lib/api';
 
-export async function askQuestion(request: ChatRequest): Promise<ChatResponseDto | { error: string }> {
+export async function askQuestion(
+  request: ChatRequest,
+): Promise<ChatResponseDto | { error: string }> {
   const parsed = chatRequestSchema.safeParse(request);
   if (!parsed.success) return { error: parsed.error.issues[0]!.message };
   try {

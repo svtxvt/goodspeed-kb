@@ -74,7 +74,10 @@ export class OpenAICompatibleChatModel implements ChatModel {
 
     const text = completion.choices?.[0]?.message?.content;
     if (typeof text !== 'string' || text.trim() === '') {
-      throw new AIProviderError('invalid_response', `${this.#endpoint} returned an empty completion`);
+      throw new AIProviderError(
+        'invalid_response',
+        `${this.#endpoint} returned an empty completion`,
+      );
     }
     return text;
   }

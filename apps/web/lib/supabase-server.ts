@@ -12,7 +12,8 @@ export async function createSupabaseServerClient() {
       getAll: () => cookieStore.getAll(),
       setAll: (cookiesToSet) => {
         try {
-          for (const { name, value, options } of cookiesToSet) cookieStore.set(name, value, options);
+          for (const { name, value, options } of cookiesToSet)
+            cookieStore.set(name, value, options);
         } catch {
           // Server Components cannot set cookies; proxy.ts refreshes the session instead.
         }

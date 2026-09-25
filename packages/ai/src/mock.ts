@@ -64,7 +64,8 @@ export class MockEmbeddingModel implements EmbeddingModel {
  */
 export class MockChatModel implements ChatModel {
   async complete(messages: Message[]): Promise<string> {
-    const prompt = [...messages].reverse().find((message) => message.role === 'user')?.content ?? '';
+    const prompt =
+      [...messages].reverse().find((message) => message.role === 'user')?.content ?? '';
     const question = new Set(tokenize(/Question:([\s\S]*)$/.exec(prompt)?.[1] ?? ''));
     const sources = [
       ...prompt.matchAll(/^\[(\d+)\][^\n]*\n([\s\S]*?)(?=\n\n\[\d+\]|\n<\/sources>|$(?![\s\S]))/gm),
@@ -80,7 +81,10 @@ export class MockChatModel implements ChatModel {
     if (!best) return 'Mock answer: there are no sources to answer from.';
 
     // Quote the first full sentence, skipping the "Setup > Docker" heading line.
-    const lines = best.text.split('\n').map((line) => line.trim()).filter(Boolean);
+    const lines = best.text
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean);
     const quote = (lines.find((line) => /[.!?:]$/.test(line)) ?? lines[0] ?? '').slice(0, 160);
     const seeAlso = runnerUp ? ` See also [${runnerUp.n}].` : '';
     return (

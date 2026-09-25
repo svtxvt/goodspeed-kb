@@ -71,11 +71,17 @@ function writeEnv(example, target, values) {
     const pattern = new RegExp(`^${key}=(.*)$`, 'm');
     const current = pattern.exec(text);
     if (current && current[1].trim() !== '' && !created) continue; // keep the user's value
-    text = current ? text.replace(pattern, `${key}=${value}`) : `${text.trimEnd()}\n${key}=${value}\n`;
+    text = current
+      ? text.replace(pattern, `${key}=${value}`)
+      : `${text.trimEnd()}\n${key}=${value}\n`;
     filled.push(key);
   }
   writeFileSync(targetPath, text);
-  const what = created ? 'created' : filled.length ? `kept, filled ${filled.join(', ')}` : 'kept as is';
+  const what = created
+    ? 'created'
+    : filled.length
+      ? `kept, filled ${filled.join(', ')}`
+      : 'kept as is';
   console.log(`  ${relative(root, targetPath)}: ${what}`);
 }
 

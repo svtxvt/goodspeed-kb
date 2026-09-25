@@ -8,7 +8,10 @@ const MAX_CHARS = CHUNKING.maxTokens * 4;
 const words = (text: string) => text.split(/\s+/).filter(Boolean);
 
 function sentences(count: number, prefix = 'Sentence'): string {
-  return Array.from({ length: count }, (_, i) => `${prefix} number ${i} explains one small fact.`).join(' ');
+  return Array.from(
+    { length: count },
+    (_, i) => `${prefix} number ${i} explains one small fact.`,
+  ).join(' ');
 }
 
 describe('chunkMarkdown', () => {

@@ -49,7 +49,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   const minSimilarity = values.RAG_MIN_SIMILARITY ?? (ai.mock ? 0.15 : 0.25);
   return {
     port: values.PORT,
-    supabase: { url: values.SUPABASE_URL.replace(/\/+$/, ''), publishableKey: values.SUPABASE_PUBLISHABLE_KEY },
+    supabase: {
+      url: values.SUPABASE_URL.replace(/\/+$/, ''),
+      publishableKey: values.SUPABASE_PUBLISHABLE_KEY,
+    },
     rag: { matchCount: values.RAG_MATCH_COUNT, minSimilarity },
     ai,
   };

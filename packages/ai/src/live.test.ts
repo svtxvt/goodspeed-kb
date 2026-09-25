@@ -16,7 +16,10 @@ const endpoint = {
 
 describe.skipIf(!env.AI_TEST_BASE_URL)('live provider', () => {
   it.skipIf(!env.AI_TEST_CHAT_MODEL)('completes a chat', async () => {
-    const chat = new OpenAICompatibleChatModel({ ...endpoint, model: env.AI_TEST_CHAT_MODEL ?? '' });
+    const chat = new OpenAICompatibleChatModel({
+      ...endpoint,
+      model: env.AI_TEST_CHAT_MODEL ?? '',
+    });
     const answer = await chat.complete([{ role: 'user', content: 'Reply with the word: pong' }]);
     expect(answer.toLowerCase()).toContain('pong');
   });

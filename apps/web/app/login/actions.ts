@@ -19,7 +19,10 @@ const credentialsSchema = z.object({
 /** One action for both buttons; the clicked button's `intent` decides. */
 export async function authenticate(_prev: AuthState, formData: FormData): Promise<AuthState> {
   const email = String(formData.get('email') ?? '').trim();
-  const parsed = credentialsSchema.safeParse({ email, password: String(formData.get('password') ?? '') });
+  const parsed = credentialsSchema.safeParse({
+    email,
+    password: String(formData.get('password') ?? ''),
+  });
   if (!parsed.success) return { error: parsed.error.issues[0]!.message, email };
 
   const supabase = await createSupabaseServerClient();
@@ -27,7 +30,8 @@ export async function authenticate(_prev: AuthState, formData: FormData): Promis
     const { data, error } = await supabase.auth.signUp(parsed.data);
     if (error) return { error: error.message, email };
     // Local Supabase has email confirmation off, so sign-up returns a session.
-    if (!data.session) return { message: 'Check your inbox to confirm your email, then sign in.', email };
+    if (!data.session)
+      return { message: 'Check your inbox to confirm your email, then sign in.', email };
   } else {
     const { error } = await supabase.auth.signInWithPassword(parsed.data);
     if (error) return { error: error.message, email };

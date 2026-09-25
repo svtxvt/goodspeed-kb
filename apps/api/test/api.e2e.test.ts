@@ -22,7 +22,9 @@ const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
 async function supabaseIsUp(): Promise<boolean> {
   if (!supabaseUrl || !publishableKey) return false;
   try {
-    const res = await fetch(`${supabaseUrl}/auth/v1/health`, { headers: { apikey: publishableKey } });
+    const res = await fetch(`${supabaseUrl}/auth/v1/health`, {
+      headers: { apikey: publishableKey },
+    });
     return res.ok;
   } catch {
     return false;
@@ -187,19 +189,30 @@ describe.skipIf(!available)('API against local Supabase', () => {
   describe('atomic, versioned writes', () => {
     it('keeps the old document and chunks when embedding fails during an update', async () => {
       const doc = await createDocument(alice, 'Office guide', 'The wifi password is sunflower.');
-      const before = await alice.db.from('document_chunks').select('content').eq('document_id', doc.id);
+      const before = await alice.db
+        .from('document_chunks')
+        .select('content')
+        .eq('document_id', doc.id);
 
       embeddings.failNext = true;
       const res = await api()
         .put(`/documents/${doc.id}`)
         .set(as(alice))
-        .send({ title: 'Office guide', content: 'The wifi password is tulip.', tags: [], version: 1 });
+        .send({
+          title: 'Office guide',
+          content: 'The wifi password is tulip.',
+          tags: [],
+          version: 1,
+        });
       expect(res.status).toBe(503);
       expect(res.body.error).toBe('ai_unavailable');
 
       const after = await api().get(`/documents/${doc.id}`).set(as(alice));
       expect(after.body).toMatchObject({ content: 'The wifi password is sunflower.', version: 1 });
-      const chunks = await alice.db.from('document_chunks').select('content').eq('document_id', doc.id);
+      const chunks = await alice.db
+        .from('document_chunks')
+        .select('content')
+        .eq('document_id', doc.id);
       expect(chunks.data).toEqual(before.data);
       expect(chunks.data).toHaveLength(1);
     });
@@ -240,9 +253,17 @@ describe.skipIf(!available)('API against local Supabase', () => {
       await api()
         .put(`/documents/${doc.id}`)
         .set(as(alice))
-        .send({ title: 'Recipe', content: 'Mix flour, water and salt.', tags: ['food'], version: 1 })
+        .send({
+          title: 'Recipe',
+          content: 'Mix flour, water and salt.',
+          tags: ['food'],
+          version: 1,
+        })
         .expect(200);
-      const chunks = await alice.db.from('document_chunks').select('content').eq('document_id', doc.id);
+      const chunks = await alice.db
+        .from('document_chunks')
+        .select('content')
+        .eq('document_id', doc.id);
       expect(chunks.data).toEqual([{ content: 'Mix flour, water and salt.' }]);
 
       await api().delete(`/documents/${doc.id}`).set(as(alice)).expect(204);

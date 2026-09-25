@@ -51,10 +51,22 @@ export function AuthForm() {
       </div>
 
       <div className="flex gap-3">
-        <button type="submit" name="intent" value="sign-in" disabled={pending} className="btn-primary">
+        <button
+          type="submit"
+          name="intent"
+          value="sign-in"
+          disabled={pending}
+          className="btn-primary"
+        >
           Sign in
         </button>
-        <button type="submit" name="intent" value="sign-up" disabled={pending} className="btn-secondary">
+        <button
+          type="submit"
+          name="intent"
+          value="sign-up"
+          disabled={pending}
+          className="btn-secondary"
+        >
           Create account
         </button>
       </div>

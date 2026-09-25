@@ -43,7 +43,10 @@ export function ChatPanel() {
 
     const history = turns
       .slice(-CHAT_LIMITS.historyMessagesMax)
-      .map(({ role, content }) => ({ role, content: content.slice(0, CHAT_LIMITS.historyMessageMax) }));
+      .map(({ role, content }) => ({
+        role,
+        content: content.slice(0, CHAT_LIMITS.historyMessageMax),
+      }));
 
     startTransition(async () => {
       const result = await askQuestion({ question: text, history });
@@ -81,7 +84,9 @@ export function ChatPanel() {
               <p className="mb-1 text-xs font-medium uppercase tracking-wide text-slate-500">
                 {turn.role === 'user' ? 'You' : 'Assistant'}
               </p>
-              <p className={`whitespace-pre-wrap ${turn.grounded === false ? 'text-slate-600 italic' : ''}`}>
+              <p
+                className={`whitespace-pre-wrap ${turn.grounded === false ? 'text-slate-600 italic' : ''}`}
+              >
                 {turn.content}
               </p>
               {turn.citations && turn.citations.length > 0 && (
@@ -91,7 +96,10 @@ export function ChatPanel() {
                     {turn.citations.map((citation) => (
                       <li key={citation.n} className="text-sm">
                         <span className="font-mono text-slate-500">[{citation.n}]</span>{' '}
-                        <Link href={`/documents/${citation.documentId}`} className="font-medium underline">
+                        <Link
+                          href={`/documents/${citation.documentId}`}
+                          className="font-medium underline"
+                        >
                           {citation.documentTitle}
                         </Link>
                         <p className="text-slate-600">{citation.excerpt}</p>
@@ -134,14 +142,20 @@ export function ChatPanel() {
           className="input"
         />
         <p id="question-hint" className="text-xs text-slate-600">
-          Enter to send, Shift+Enter for a new line. Follow-up questions use the conversation so far.
+          Enter to send, Shift+Enter for a new line. Follow-up questions use the conversation so
+          far.
         </p>
         <div className="flex gap-3">
           <button type="submit" disabled={pending || !question.trim()} className="btn-primary">
             {pending ? 'Asking…' : 'Ask'}
           </button>
           {turns.length > 0 && (
-            <button type="button" onClick={() => writeHistory([])} disabled={pending} className="btn-secondary">
+            <button
+              type="button"
+              onClick={() => writeHistory([])}
+              disabled={pending}
+              className="btn-secondary"
+            >
               New conversation
             </button>
           )}

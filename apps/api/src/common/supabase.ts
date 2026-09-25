@@ -59,8 +59,7 @@ export function dbError(error: PostgrestError): HttpException | DatabaseError {
     case 'KB409': // raised by save_document
       return new ConflictException({
         error: 'version_conflict',
-        message:
-          'This document was changed since you opened it. Reload to get the latest version.',
+        message: 'This document was changed since you opened it. Reload to get the latest version.',
       });
     case 'KB404': // raised by save_document
     case 'PGRST116': // .single() found no row (missing, or another user's: RLS hides it)

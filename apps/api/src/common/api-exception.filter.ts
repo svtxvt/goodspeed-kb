@@ -43,20 +43,24 @@ export function toErrorBody(exception: unknown): ApiErrorBody {
       : {
           statusCode: 502,
           error: `ai_${exception.code}`,
-          message: 'The AI provider returned an unusable response. Check the API logs and AI_* settings.',
+          message:
+            'The AI provider returned an unusable response. Check the API logs and AI_* settings.',
         };
   }
 
   if (exception instanceof HttpException) {
     const statusCode = exception.getStatus();
     const response = exception.getResponse();
-    const body = typeof response === 'string' ? { message: response } : (response as Record<string, unknown>);
+    const body =
+      typeof response === 'string' ? { message: response } : (response as Record<string, unknown>);
     // Our own exceptions carry a snake_case code; Nest's built-ins carry "Not Found" etc.
     const error =
       typeof body.error === 'string' && /^[a-z_]+$/.test(body.error)
         ? body.error
         : (CODE_BY_STATUS[statusCode] ?? 'error');
-    const message = Array.isArray(body.message) ? body.message.join('; ') : String(body.message ?? exception.message);
+    const message = Array.isArray(body.message)
+      ? body.message.join('; ')
+      : String(body.message ?? exception.message);
     return { statusCode, error, message };
   }
 
@@ -83,7 +87,9 @@ export class ApiExceptionFilter implements ExceptionFilter {
       // Operational, not a bug: the full provider message goes to the log only.
       this.#logger.warn(`${exception.code}: ${exception.message}`);
     } else if (body.statusCode >= 500) {
-      this.#logger.error(exception instanceof Error ? (exception.stack ?? exception.message) : exception);
+      this.#logger.error(
+        exception instanceof Error ? (exception.stack ?? exception.message) : exception,
+      );
     }
     host.switchToHttp().getResponse<Response>().status(body.statusCode).json(body);
   }

@@ -15,7 +15,10 @@ export class ApiError extends Error {
   }
 }
 
-export async function api<T>(path: string, init: { method?: string; body?: unknown } = {}): Promise<T> {
+export async function api<T>(
+  path: string,
+  init: { method?: string; body?: unknown } = {},
+): Promise<T> {
   const supabase = await createSupabaseServerClient();
   // getSession() only reads the cookie; that is fine here because the API
   // verifies the token itself (proxy.ts already refreshed it).

@@ -84,8 +84,8 @@ export function DocumentForm({ document }: { document?: DocumentDto }) {
           className="input font-mono"
         />
         <p id="content-count" className="mt-1 text-xs text-slate-600">
-          {content.length.toLocaleString('en-US')} / {DOCUMENT_LIMITS.contentMax.toLocaleString('en-US')}{' '}
-          characters
+          {content.length.toLocaleString('en-US')} /{' '}
+          {DOCUMENT_LIMITS.contentMax.toLocaleString('en-US')} characters
         </p>
         {errors.content && (
           <p id="content-error" className="field-error">

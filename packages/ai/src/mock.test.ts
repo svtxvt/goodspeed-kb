@@ -8,7 +8,10 @@ describe('MockEmbeddingModel', () => {
   const model = new MockEmbeddingModel(128);
 
   it('is deterministic, unit-length and sized to its space', async () => {
-    const [a, b] = await model.embed(['Vector search with pgvector', 'Vector search with pgvector']);
+    const [a, b] = await model.embed([
+      'Vector search with pgvector',
+      'Vector search with pgvector',
+    ]);
     expect(a).toEqual(b);
     expect(a).toHaveLength(128);
     expect(Math.hypot(...a!)).toBeCloseTo(1, 10);

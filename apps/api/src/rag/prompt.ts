@@ -51,7 +51,9 @@ export function trimHistory(history: ChatHistoryMessage[], budgetTokens: number)
   let used = 0;
   for (const turn of [...history].reverse()) {
     const content =
-      turn.role === 'assistant' ? turn.content.replace(/\s?\[\d+(?:\s*,\s*\d+)*\]/g, '') : turn.content;
+      turn.role === 'assistant'
+        ? turn.content.replace(/\s?\[\d+(?:\s*,\s*\d+)*\]/g, '')
+        : turn.content;
     used += estimateTokens(content);
     if (used > budgetTokens) break;
     kept.unshift({ role: turn.role, content });
@@ -71,7 +73,8 @@ export function buildMessages(
   sources: Source[],
 ): Message[] {
   const numbered = sources.map(
-    (source, i) => `[${i + 1}] ${source.documentTitle.replace(/\s+/g, ' ')}\n${neutralize(source.content)}`,
+    (source, i) =>
+      `[${i + 1}] ${source.documentTitle.replace(/\s+/g, ' ')}\n${neutralize(source.content)}`,
   );
   return [
     { role: 'system', content: SYSTEM_PROMPT },

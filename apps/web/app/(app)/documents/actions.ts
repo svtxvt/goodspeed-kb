@@ -48,7 +48,8 @@ export async function saveDocument(_prev: SaveState, formData: FormData): Promis
         })
       : await api<DocumentDto>('/documents', { method: 'POST', body: parsed.data });
   } catch (error) {
-    if (error instanceof ApiError) return { error: messageFor(error), conflict: error.status === 409 };
+    if (error instanceof ApiError)
+      return { error: messageFor(error), conflict: error.status === 409 };
     throw error;
   }
 

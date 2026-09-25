@@ -20,7 +20,11 @@ export function DeleteDocumentButton({ id, title }: { id: string; title: string 
 
   return (
     <>
-      <button type="button" onClick={() => dialog.current?.showModal()} className="btn-secondary text-red-700">
+      <button
+        type="button"
+        onClick={() => dialog.current?.showModal()}
+        className="btn-secondary text-red-700"
+      >
         Delete…
       </button>
       <dialog

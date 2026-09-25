@@ -33,8 +33,11 @@ export default async function DocumentsPage({
 
       {documents.length === 0 ? (
         <p className="rounded-md border border-dashed border-slate-300 p-8 text-center text-slate-600">
-          No documents yet. <Link href="/documents/new" className="underline">Create one</Link>, then ask
-          questions about it.
+          No documents yet.{' '}
+          <Link href="/documents/new" className="underline">
+            Create one
+          </Link>
+          , then ask questions about it.
         </p>
       ) : (
         <ul className="divide-y divide-slate-200 rounded-md border border-slate-200 bg-white">
@@ -46,7 +49,10 @@ export default async function DocumentsPage({
               {doc.tags.length > 0 && (
                 <ul aria-label="Tags" className="flex gap-1">
                   {doc.tags.map((tag) => (
-                    <li key={tag} className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-700">
+                    <li
+                      key={tag}
+                      className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-700"
+                    >
                       {tag}
                     </li>
                   ))}

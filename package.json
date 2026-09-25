@@ -1,0 +1,33 @@
+{
+  "name": "goodspeed-kb",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.20.0",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "setup": "node scripts/setup.mjs",
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "db:start": "supabase start",
+    "db:stop": "supabase stop",
+    "db:reset": "supabase db reset",
+    "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "@eslint/js": "9.39.5",
+    "@types/node": "22.20.4",
+    "eslint": "9.39.5",
+    "eslint-config-next": "16.3.6",
+    "globals": "17.12.0",
+    "prettier": "3.9.9",
+    "supabase": "2.117.0",
+    "turbo": "2.11.3",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.70.1"
+  }
+}

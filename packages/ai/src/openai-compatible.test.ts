@@ -110,7 +110,24 @@ describe('OpenAICompatibleEmbeddingModel', () => {
     expect(calls[0]!.url).toBe('http://localhost:11434/v1/embeddings');
     expect(calls[0]!.body).toMatchObject({ model: 'nomic-embed-text', encoding_format: 'float' });
     expect(vectors.map((vector) => vector[0])).toEqual(texts.map((text) => text.length));
-    expect(model.space).toEqual({ id: 'localhost:11434/nomic-embed-text:2', dimensions: 2 });
+    expect(model.space).toEqual({ id: 'localhost:11434/v1/nomic-embed-text:2', dimensions: 2 });
+  });
+});
+
+describe('embedding space id', () => {
+  const spaceId = (baseURL: string) =>
+    new OpenAICompatibleEmbeddingModel({ ...endpoint, baseURL, model: 'm', dimensions: 8 }).space
+      .id;
+
+  it('uses the normalized base URL: host and path, lowercase host, no trailing slash', () => {
+    expect(spaceId('https://GPU.example.com/a/v1/')).toBe('gpu.example.com/a/v1/m:8');
+    expect(spaceId('https://gpu.example.com/a/v1')).toBe('gpu.example.com/a/v1/m:8');
+  });
+
+  it('separates two endpoints on the same host', () => {
+    expect(spaceId('https://gpu.example.com/a/v1')).not.toBe(
+      spaceId('https://gpu.example.com/b/v1'),
+    );
   });
 });
 

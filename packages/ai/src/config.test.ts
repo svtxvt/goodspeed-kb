@@ -32,7 +32,7 @@ describe('parseAIConfig', () => {
     const embeddings = createEmbeddingModel(config);
     expect(embeddings).toBeInstanceOf(OpenAICompatibleEmbeddingModel);
     expect(embeddings.space).toEqual({
-      id: 'api.openai.com/text-embedding-3-small:1536',
+      id: 'api.openai.com/v1/text-embedding-3-small:1536',
       dimensions: 1536,
     });
   });

@@ -19,7 +19,7 @@ export interface EndpointConfig {
 export interface EmbeddingEndpointConfig extends EndpointConfig {
   dimensions: number;
   /**
-   * Overrides the "<host>/<model>" part of the space id, e.g. to declare that
+   * Overrides the "<host><path>/<model>" part of the space id, e.g. to declare that
    * two servers host the same model. The dimension is always appended.
    */
   spaceName?: string;
@@ -102,10 +102,12 @@ export class OpenAICompatibleEmbeddingModel implements EmbeddingModel {
     this.#client = createClient(config);
     this.#model = config.model;
     this.#endpoint = `${config.baseURL} (${config.model})`;
-    // Same model name on another server is not guaranteed to be the same model,
-    // so the host is part of the identity unless the operator names the space.
-    const name =
-      config.spaceName ?? `${new URL(config.baseURL).host.toLowerCase()}/${config.model}`;
+    // Same model name on another endpoint is not guaranteed to be the same
+    // model, so the normalized base URL (host + path) is part of the identity
+    // unless the operator names the space.
+    const url = new URL(config.baseURL);
+    const endpoint = `${url.host.toLowerCase()}${url.pathname.replace(/\/+$/, '')}`;
+    const name = config.spaceName ?? `${endpoint}/${config.model}`;
     this.space = { id: `${name}:${config.dimensions}`, dimensions: config.dimensions };
   }
 

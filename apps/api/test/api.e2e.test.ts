@@ -9,6 +9,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
+import { localServiceRoleKey } from '../scripts/local-supabase.js';
 import { AppModule } from '../src/app.module.js';
 import { createUserClient } from '../src/common/supabase.js';
 import { loadConfig, loadEnvFile } from '../src/config.js';
@@ -17,7 +18,6 @@ import { APP_CONFIG, CHAT_MODEL, EMBEDDING_MODEL } from '../src/tokens.js';
 loadEnvFile();
 const supabaseUrl = process.env.SUPABASE_URL ?? '';
 const publishableKey = process.env.SUPABASE_PUBLISHABLE_KEY ?? '';
-const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
 
 async function supabaseIsUp(): Promise<boolean> {
   if (!supabaseUrl || !publishableKey) return false;
@@ -114,6 +114,7 @@ describe.skipIf(!available)('API against local Supabase', () => {
   afterAll(async () => {
     await app?.close();
     // Deleting the users cascades to their documents and chunks.
+    const serviceKey = localServiceRoleKey();
     if (serviceKey) {
       for (const user of [alice, bob].filter(Boolean)) {
         await fetch(`${supabaseUrl}/auth/v1/admin/users/${user.id}`, {

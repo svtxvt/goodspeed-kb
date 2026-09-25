@@ -5,26 +5,61 @@
 //
 // Until a document is re-embedded, search simply does not see it (chunks are
 // filtered by embedding space); vectors from two models are never compared.
-// Each document is replaced atomically and only if it was not edited meanwhile,
-// so the script is safe to re-run and to run while users are working.
+// Each document is replaced atomically and only if it was not edited meanwhile
+// (one retry with the latest version), so the script is safe to re-run and to
+// run while users are working.
 //
 // This is an operator task across all users, so it uses the service-role key
-// (bypasses RLS). The API itself never holds that key.
+// (bypasses RLS). The key comes from SUPABASE_SERVICE_ROLE_KEY in the shell,
+// or, for the local stack, from `supabase status`. It is never stored in the
+// API's .env, and the API itself never uses it.
 
-import { createEmbeddingModel } from '@kb/ai';
-import { createClient } from '@supabase/supabase-js';
+import { createEmbeddingModel, type EmbeddingModel } from '@kb/ai';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 import type { DocumentRow } from '../src/common/supabase.js';
 import { loadConfig, loadEnvFile } from '../src/config.js';
 import { embedDocument } from '../src/rag/embed-document.js';
+import { localServiceRoleKey } from './local-supabase.js';
 
 const PAGE_SIZE = 100;
+const COLUMNS = 'id, title, content, version';
+type Doc = Pick<DocumentRow, 'id' | 'title' | 'content' | 'version'>;
+
+async function reindexDocument(
+  admin: SupabaseClient,
+  model: EmbeddingModel,
+  doc: Doc,
+): Promise<'reindexed' | 'skipped'> {
+  let current = doc;
+  for (let attempt = 1; ; attempt++) {
+    const chunks = await embedDocument(current, model);
+    const { data: replaced, error } = await admin.rpc('replace_document_chunks', {
+      p_document_id: current.id,
+      p_version: current.version,
+      p_chunks: chunks,
+    });
+    if (error) throw new Error(error.message);
+    if (replaced) return 'reindexed';
+    if (attempt === 2) return 'skipped';
+
+    // Edited since we read it: read the latest version and try once more.
+    const latest = await admin.from('documents').select(COLUMNS).eq('id', doc.id).maybeSingle();
+    if (latest.error) throw new Error(latest.error.message);
+    if (!latest.data) return 'skipped'; // deleted meanwhile
+    current = latest.data as Doc;
+  }
+}
 
 async function main(): Promise<void> {
   loadEnvFile();
   const config = loadConfig();
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!serviceKey) throw new Error('SUPABASE_SERVICE_ROLE_KEY is required for reindexing.');
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || localServiceRoleKey();
+  if (!serviceKey) {
+    throw new Error(
+      'No service-role key: start the local stack (pnpm db:start) or set SUPABASE_SERVICE_ROLE_KEY.',
+    );
+  }
 
   const admin = createClient(config.supabase.url, serviceKey, {
     auth: { persistSession: false, autoRefreshToken: false },
@@ -33,36 +68,29 @@ async function main(): Promise<void> {
   console.log(`Re-embedding all documents into space "${model.space.id}"`);
 
   const totals = { reindexed: 0, skipped: 0, failed: 0 };
-  for (let from = 0; ; from += PAGE_SIZE) {
-    const { data, error } = await admin
-      .from('documents')
-      .select('id, title, content, version')
-      .order('created_at')
-      .range(from, from + PAGE_SIZE - 1);
+  // Keyset pagination: stable even when documents are added or deleted meanwhile.
+  let lastId: string | null = null;
+  for (;;) {
+    let page = admin.from('documents').select(COLUMNS).order('id').limit(PAGE_SIZE);
+    if (lastId) page = page.gt('id', lastId);
+    const { data, error } = await page;
     if (error) throw new Error(`Could not list documents: ${error.message}`);
-    const documents = data as Pick<DocumentRow, 'id' | 'title' | 'content' | 'version'>[];
+    const documents = data as Doc[];
 
     for (const doc of documents) {
       try {
-        const chunks = await embedDocument(doc, model);
-        const { data: replaced, error: rpcError } = await admin.rpc('replace_document_chunks', {
-          p_document_id: doc.id,
-          p_version: doc.version,
-          p_chunks: chunks,
-        });
-        if (rpcError) throw new Error(rpcError.message);
-        // false = edited since we read it; that edit already embedded the new content.
-        totals[replaced ? 'reindexed' : 'skipped']++;
+        totals[await reindexDocument(admin, model, doc)]++;
       } catch (error) {
         totals.failed++;
         console.error(`  ${doc.id} "${doc.title}": ${(error as Error).message}`);
       }
     }
     if (documents.length < PAGE_SIZE) break;
+    lastId = documents.at(-1)!.id;
   }
 
   console.log(
-    `Done: ${totals.reindexed} re-embedded, ${totals.skipped} skipped (edited meanwhile), ${totals.failed} failed.`,
+    `Done: ${totals.reindexed} re-embedded, ${totals.skipped} skipped (changed twice or deleted meanwhile), ${totals.failed} failed.`,
   );
   if (totals.failed > 0) {
     console.log('Re-run `pnpm reindex` to retry the failed documents.');

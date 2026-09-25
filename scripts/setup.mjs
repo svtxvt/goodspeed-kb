@@ -57,7 +57,6 @@ const status = Object.fromEntries(
 );
 const supabaseUrl = status.API_URL;
 const publishableKey = status.PUBLISHABLE_KEY || status.ANON_KEY;
-const serviceKey = status.SECRET_KEY || status.SERVICE_ROLE_KEY;
 if (!supabaseUrl || !publishableKey) fail('Could not read URL/keys from `supabase status`.');
 
 /** Creates `target` from `example` if missing, then fills the given keys where empty. */
@@ -89,7 +88,6 @@ step('Writing environment files');
 writeEnv('apps/api/.env.example', 'apps/api/.env', {
   SUPABASE_URL: supabaseUrl,
   SUPABASE_PUBLISHABLE_KEY: publishableKey,
-  SUPABASE_SERVICE_ROLE_KEY: serviceKey,
 });
 writeEnv('apps/web/.env.example', 'apps/web/.env.local', {
   NEXT_PUBLIC_SUPABASE_URL: supabaseUrl,

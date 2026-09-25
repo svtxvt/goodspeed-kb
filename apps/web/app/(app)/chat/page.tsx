@@ -1,6 +1,16 @@
+import { redirect } from 'next/navigation';
+
+import { createSupabaseServerClient } from '@/lib/supabase-server';
+
 import { ChatPanel } from './chat-panel';
 
-export default function ChatPage() {
+export default async function ChatPage() {
+  // getClaims() verifies the JWT, so the storage key is tied to a real identity.
+  const supabase = await createSupabaseServerClient();
+  const { data } = await supabase.auth.getClaims();
+  const userId = data?.claims.sub;
+  if (!userId) redirect('/login');
+
   return (
     <div className="space-y-6">
       <div>
@@ -10,7 +20,7 @@ export default function ChatPage() {
           tab until you sign out.
         </p>
       </div>
-      <ChatPanel />
+      <ChatPanel key={userId} userId={userId} />
     </div>
   );
 }

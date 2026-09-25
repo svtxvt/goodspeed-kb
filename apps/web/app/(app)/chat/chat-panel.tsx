@@ -6,8 +6,6 @@ import { useState, useSyncExternalStore, useTransition } from 'react';
 
 import { askQuestion } from './actions';
 
-export const CHAT_STORAGE_KEY = 'kb:chat-history';
-
 interface Turn {
   role: 'user' | 'assistant';
   content: string;
@@ -15,22 +13,36 @@ interface Turn {
   grounded?: boolean;
 }
 
-// The conversation lives in sessionStorage: it survives navigation and reloads
-// in this tab, disappears when the tab closes, and is cleared on sign-out.
+// The conversation lives in sessionStorage under a key that includes the
+// verified user id: it survives navigation and reloads in this tab, another
+// account signing in here never sees it, and sign-out removes it.
+const STORAGE_PREFIX = 'kb:chat-history:';
 const CHANGE_EVENT = 'kb:chat-history-change';
 const subscribe = (onChange: () => void) => {
   window.addEventListener(CHANGE_EVENT, onChange);
   return () => window.removeEventListener(CHANGE_EVENT, onChange);
 };
-const readHistory = () => sessionStorage.getItem(CHAT_STORAGE_KEY) ?? '[]';
-const writeHistory = (turns: Turn[]) => {
-  sessionStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(turns));
-  window.dispatchEvent(new Event(CHANGE_EVENT));
-};
 
-export function ChatPanel() {
-  const stored = useSyncExternalStore(subscribe, readHistory, () => '[]');
+/** Removes every stored conversation in this tab (called on sign-out). */
+export function clearChatHistory(): void {
+  for (const key of Object.keys(sessionStorage)) {
+    if (key.startsWith(STORAGE_PREFIX)) sessionStorage.removeItem(key);
+  }
+}
+
+/** Render with `key={userId}` so a different identity always gets a fresh panel. */
+export function ChatPanel({ userId }: { userId: string }) {
+  const storageKey = `${STORAGE_PREFIX}${userId}`;
+  const stored = useSyncExternalStore(
+    subscribe,
+    () => sessionStorage.getItem(storageKey) ?? '[]',
+    () => '[]',
+  );
   const turns = JSON.parse(stored) as Turn[];
+  const writeHistory = (next: Turn[]) => {
+    sessionStorage.setItem(storageKey, JSON.stringify(next));
+    window.dispatchEvent(new Event(CHANGE_EVENT));
+  };
   const [question, setQuestion] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -41,12 +53,10 @@ export function ChatPanel() {
     if (!text || pending) return;
     setError(null);
 
-    const history = turns
-      .slice(-CHAT_LIMITS.historyMessagesMax)
-      .map(({ role, content }) => ({
-        role,
-        content: content.slice(0, CHAT_LIMITS.historyMessageMax),
-      }));
+    const history = turns.slice(-CHAT_LIMITS.historyMessagesMax).map(({ role, content }) => ({
+      role,
+      content: content.slice(0, CHAT_LIMITS.historyMessageMax),
+    }));
 
     startTransition(async () => {
       const result = await askQuestion({ question: text, history });

@@ -289,6 +289,42 @@ describe.skipIf(!available)('API against local Supabase', () => {
       expect(current.body).toMatchObject({ content: 'Q1: search. Q2: exports.', version: 2 });
     });
 
+    it('bumps the version and drops stale chunks when a row is updated around the API', async () => {
+      const doc = await createDocument(alice, 'Direct', 'Original text about apples.');
+      const direct = await alice.db
+        .from('documents')
+        .update({ content: 'Edited straight through PostgREST.' })
+        .eq('id', doc.id);
+      expect(direct.error).toBeNull();
+
+      const after = await api().get(`/documents/${doc.id}`).set(as(alice));
+      expect(after.body).toMatchObject({
+        content: 'Edited straight through PostgREST.',
+        version: 2,
+      });
+      const chunks = await alice.db.from('document_chunks').select('id').eq('document_id', doc.id);
+      expect(chunks.data).toEqual([]);
+
+      const stale = await api()
+        .put(`/documents/${doc.id}`)
+        .set(as(alice))
+        .send({ title: 'Direct', content: 'From an old tab.', tags: [], version: 1 });
+      expect(stale.status).toBe(409);
+    });
+
+    it('refuses changed text without new chunks in save_document', async () => {
+      const doc = await createDocument(alice, 'Guarded', 'Some text.');
+      const { error } = await alice.db.rpc('save_document', {
+        p_id: doc.id,
+        p_expected_version: 1,
+        p_title: 'Guarded',
+        p_content: 'Different text.',
+        p_tags: [],
+        p_chunks: null,
+      });
+      expect(error?.code).toBe('KB422');
+    });
+
     it('replaces chunks when content changes and removes them on delete', async () => {
       const doc = await createDocument(alice, 'Recipe', 'Mix flour and water.');
       await api()

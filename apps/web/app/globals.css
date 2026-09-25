@@ -1,0 +1,42 @@
+@import 'tailwindcss';
+
+@layer base {
+  body {
+    @apply bg-slate-50 text-slate-900 antialiased;
+  }
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-blue-600;
+  }
+}
+
+@layer components {
+  .input {
+    @apply block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm;
+  }
+  .input[aria-invalid='true'] {
+    @apply border-red-600;
+  }
+  .label {
+    @apply mb-1 block text-sm font-medium;
+  }
+  .btn-primary,
+  .btn-secondary,
+  .btn-danger {
+    @apply inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-60;
+  }
+  .btn-primary {
+    @apply bg-blue-700 text-white hover:bg-blue-800;
+  }
+  .btn-secondary {
+    @apply border border-slate-300 bg-white hover:bg-slate-100;
+  }
+  .btn-danger {
+    @apply bg-red-700 text-white hover:bg-red-800;
+  }
+  .field-error {
+    @apply mt-1 text-sm text-red-700;
+  }
+  .alert {
+    @apply rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800;
+  }
+}

@@ -17,7 +17,11 @@ export function estimateTokens(text: string): number {
   return Math.ceil(text.length / 4);
 }
 
+/** Longer heading paths are cut, so the prefix can never crowd out the text. */
+const MAX_HEADING_PATH_CHARS = 300;
+
 interface Section {
+  level: number;
   headingPath: string[];
   blocks: string[];
 }
@@ -26,7 +30,7 @@ interface Section {
 function parseSections(markdown: string): Section[] {
   const sections: Section[] = [];
   const headings: { level: number; text: string }[] = [];
-  let section: Section = { headingPath: [], blocks: [] };
+  let section: Section = { level: 0, headingPath: [], blocks: [] };
   let block: string[] = [];
   let fence: string | null = null;
 
@@ -35,9 +39,12 @@ function parseSections(markdown: string): Section[] {
     if (text) section.blocks.push(text);
     block = [];
   };
-  const flushSection = () => {
+  // A heading without text of its own is kept (a document may be only
+  // headings), unless the next heading is its child and carries it in its path.
+  const flushSection = (nextLevel: number) => {
     flushBlock();
-    if (section.blocks.length > 0) sections.push(section);
+    const keepHeadingOnly = section.headingPath.length > 0 && nextLevel <= section.level;
+    if (section.blocks.length > 0 || keepHeadingOnly) sections.push(section);
   };
 
   for (const line of markdown.replace(/\r\n?/g, '\n').split('\n')) {
@@ -61,18 +68,18 @@ function parseSections(markdown: string): Section[] {
 
     const heading = /^(#{1,6})\s+(.*?)\s*#*\s*$/.exec(line);
     if (heading) {
-      flushSection();
       const level = heading[1]!.length;
+      flushSection(level);
       while (headings.length > 0 && headings.at(-1)!.level >= level) headings.pop();
       headings.push({ level, text: heading[2]! });
-      section = { headingPath: headings.map((h) => h.text).filter(Boolean), blocks: [] };
+      section = { level, headingPath: headings.map((h) => h.text).filter(Boolean), blocks: [] };
       continue;
     }
 
     if (line.trim() === '') flushBlock();
     else block.push(line);
   }
-  flushSection();
+  flushSection(0);
   return sections;
 }
 
@@ -127,7 +134,14 @@ export function chunkMarkdown(
   const chunks: string[] = [];
 
   for (const section of parseSections(markdown)) {
-    const prefix = section.headingPath.length > 0 ? `${section.headingPath.join(' > ')}\n\n` : '';
+    let path = section.headingPath.join(' > ');
+    if (path.length > MAX_HEADING_PATH_CHARS)
+      path = `${path.slice(0, MAX_HEADING_PATH_CHARS - 1)}…`;
+    if (section.blocks.length === 0) {
+      chunks.push(path); // heading-only section
+      continue;
+    }
+    const prefix = path ? `${path}\n\n` : '';
     const budget = Math.max(maxChars - prefix.length, 200);
     // Leave room for the overlap carried into the next chunk.
     const pieceMax = Math.max(budget - overlapChars - 2, 100);

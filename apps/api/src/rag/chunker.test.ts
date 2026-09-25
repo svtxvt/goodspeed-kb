@@ -102,6 +102,20 @@ describe('chunkMarkdown', () => {
     expect(chunks.join('').replace(/\s/g, '').length).toBeGreaterThanOrEqual(blob.length);
   });
 
+  it('keeps heading-only content, but not a parent heading that its children repeat', () => {
+    expect(chunkMarkdown('# Only a title\n## And a subtitle')).toEqual([
+      'Only a title > And a subtitle',
+    ]);
+    expect(chunkMarkdown('# A\n## B\ntext\n## C')).toEqual(['A > B\n\ntext', 'A > C']);
+  });
+
+  it('bounds a huge heading so every chunk stays within the budget', () => {
+    const chunks = chunkMarkdown(`# ${'h'.repeat(10_000)}\n${sentences(20)}`);
+    expect(chunks.length).toBeGreaterThan(0);
+    for (const chunk of chunks) expect(chunk.length).toBeLessThanOrEqual(MAX_CHARS);
+    expect(chunks[0]).toMatch(/^h{299}…\n\nSentence number 0/);
+  });
+
   it('normalises Windows line endings', () => {
     expect(chunkMarkdown('# T\r\nline one\r\n\r\nline two')).toEqual(['T\n\nline one\n\nline two']);
   });

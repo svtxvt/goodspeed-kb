@@ -50,7 +50,6 @@ export interface DocumentSummaryDto {
   id: string;
   title: string;
   tags: string[];
-  excerpt: string;
   updatedAt: string;
 }
 

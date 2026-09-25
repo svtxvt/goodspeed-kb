@@ -36,7 +36,8 @@ describe('MockChatModel', () => {
       { role: 'system', content: 'Cite sources like [1].' },
       {
         role: 'user',
-        content: '[1] Handbook\nVacation is 25 days.\n\n[2] Policy\nAsk your manager.\n\nQuestion: ?',
+        content:
+          '<sources>\n[1] Handbook\nLeave > Vacation\n\nVacation is 25 days.\n\n[2] Policy\nAsk your manager.\n</sources>\n\nQuestion: ?',
       },
     ]);
     expect(answer).toContain('"Vacation is 25 days." [1]');

@@ -58,17 +58,21 @@ export class MockEmbeddingModel implements EmbeddingModel {
 
 /**
  * Answers with a quote from the first source and cites up to two sources. It
- * reads sources as lines starting with "[n]" in the last user message, which
- * is how the API formats its context block.
+ * reads sources as blocks starting with a "[n] Title" line in the last user
+ * message, which is how the API formats its context.
  */
 export class MockChatModel implements ChatModel {
   async complete(messages: Message[]): Promise<string> {
     const lastUser = [...messages].reverse().find((message) => message.role === 'user');
-    const sources = [...(lastUser?.content ?? '').matchAll(/^\[(\d+)\][^\n]*\n+([^\n]*)/gm)];
+    const sources = [
+      ...(lastUser?.content ?? '').matchAll(/^\[(\d+)\][^\n]*\n([\s\S]*?)(?=\n\n\[\d+\]|\n<\/|$(?![\s\S]))/gm),
+    ];
     const [first, second] = sources;
     if (!first) return 'Mock answer: there are no sources to answer from.';
 
-    const quote = first[2]!.trim().slice(0, 160);
+    // Skip short lines such as the "Setup > Docker" heading path.
+    const lines = first[2]!.split('\n').map((line) => line.trim()).filter(Boolean);
+    const quote = (lines.find((line) => line.split(/\s+/).length >= 4) ?? lines[0] ?? '').slice(0, 160);
     const seeAlso = second ? ` See also [${second[1]}].` : '';
     return (
       `Mock answer (no language model is configured). ` +

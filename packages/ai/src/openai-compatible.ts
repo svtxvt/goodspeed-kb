@@ -16,6 +16,15 @@ export interface EndpointConfig {
   fetch?: typeof fetch;
 }
 
+export interface EmbeddingEndpointConfig extends EndpointConfig {
+  dimensions: number;
+  /**
+   * Overrides the "<host>/<model>" part of the space id, e.g. to declare that
+   * two servers host the same model. The dimension is always appended.
+   */
+  spaceName?: string;
+}
+
 /** Many providers cap inputs per request well below OpenAI's 2048. */
 export const EMBEDDING_BATCH_SIZE = 64;
 
@@ -89,11 +98,15 @@ export class OpenAICompatibleEmbeddingModel implements EmbeddingModel {
   readonly #model: string;
   readonly #endpoint: string;
 
-  constructor(config: EndpointConfig & { dimensions: number }) {
+  constructor(config: EmbeddingEndpointConfig) {
     this.#client = createClient(config);
     this.#model = config.model;
     this.#endpoint = `${config.baseURL} (${config.model})`;
-    this.space = { id: `${config.model}:${config.dimensions}`, dimensions: config.dimensions };
+    // Same model name on another server is not guaranteed to be the same model,
+    // so the host is part of the identity unless the operator names the space.
+    const name =
+      config.spaceName ?? `${new URL(config.baseURL).host.toLowerCase()}/${config.model}`;
+    this.space = { id: `${name}:${config.dimensions}`, dimensions: config.dimensions };
   }
 
   async embed(texts: string[]): Promise<number[][]> {

@@ -110,7 +110,7 @@ describe('OpenAICompatibleEmbeddingModel', () => {
     expect(calls[0]!.url).toBe('http://localhost:11434/v1/embeddings');
     expect(calls[0]!.body).toMatchObject({ model: 'nomic-embed-text', encoding_format: 'float' });
     expect(vectors.map((vector) => vector[0])).toEqual(texts.map((text) => text.length));
-    expect(model.space).toEqual({ id: 'nomic-embed-text:2', dimensions: 2 });
+    expect(model.space).toEqual({ id: 'localhost:11434/nomic-embed-text:2', dimensions: 2 });
   });
 });
 

@@ -31,7 +31,22 @@ describe('parseAIConfig', () => {
     expect(createChatModel(config)).toBeInstanceOf(OpenAICompatibleChatModel);
     const embeddings = createEmbeddingModel(config);
     expect(embeddings).toBeInstanceOf(OpenAICompatibleEmbeddingModel);
-    expect(embeddings.space).toEqual({ id: 'text-embedding-3-small:1536', dimensions: 1536 });
+    expect(embeddings.space).toEqual({
+      id: 'api.openai.com/text-embedding-3-small:1536',
+      dimensions: 1536,
+    });
+  });
+
+  it('lets the operator name the embedding space; the dimension is always appended', () => {
+    const config = parseAIConfig({
+      AI_CHAT_BASE_URL: 'http://gpu-box:11434/v1',
+      AI_CHAT_MODEL: 'llama3.2',
+      AI_EMBEDDING_BASE_URL: 'http://gpu-box:11434/v1',
+      AI_EMBEDDING_MODEL: 'nomic-embed-text',
+      AI_EMBEDDING_DIMENSIONS: '768',
+      AI_EMBEDDING_SPACE: 'nomic-embed-text-v1.5',
+    });
+    expect(createEmbeddingModel(config).space.id).toBe('nomic-embed-text-v1.5:768');
   });
 
   it('accepts a local server without an API key (Ollama)', () => {

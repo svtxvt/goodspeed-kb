@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { AIConfigError } from './errors.js';
 import { MockChatModel, MockEmbeddingModel } from './mock.js';
 import {
+  type EmbeddingEndpointConfig,
   type EndpointConfig,
   OpenAICompatibleChatModel,
   OpenAICompatibleEmbeddingModel,
@@ -21,6 +22,7 @@ const envSchema = z.object({
   AI_EMBEDDING_API_KEY: z.string().optional(),
   AI_EMBEDDING_MODEL: z.string().optional(),
   AI_EMBEDDING_DIMENSIONS: z.coerce.number().int().min(1).max(16_000).optional(),
+  AI_EMBEDDING_SPACE: z.string().optional(),
   AI_TIMEOUT_MS: z.coerce.number().int().positive().default(30_000),
   AI_MAX_RETRIES: z.coerce.number().int().min(0).max(10).default(2),
 });
@@ -40,7 +42,7 @@ export type AIConfig =
   | {
       mock: false;
       chat: EndpointConfig;
-      embedding: EndpointConfig & { dimensions: number };
+      embedding: EmbeddingEndpointConfig;
     };
 
 /** Parses AI_* variables. Throws AIConfigError listing every problem at once. */
@@ -83,6 +85,7 @@ export function parseAIConfig(env: Record<string, string | undefined>): AIConfig
       apiKey: values.AI_EMBEDDING_API_KEY,
       model: values.AI_EMBEDDING_MODEL!,
       dimensions: values.AI_EMBEDDING_DIMENSIONS!,
+      spaceName: values.AI_EMBEDDING_SPACE,
     },
   };
 }

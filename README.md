@@ -96,7 +96,7 @@ Model ids below are examples; check each provider's current model list.
 AI_MOCK=false
 AI_CHAT_BASE_URL=https://api.openai.com/v1
 AI_CHAT_API_KEY=sk-...
-AI_CHAT_MODEL=gpt-5.4-mini
+AI_CHAT_MODEL=gpt-6-luna
 AI_EMBEDDING_BASE_URL=https://api.openai.com/v1
 AI_EMBEDDING_API_KEY=sk-...
 AI_EMBEDDING_MODEL=text-embedding-3-small
@@ -364,7 +364,7 @@ pnpm test
 
   ```bash
   AI_TEST_BASE_URL=https://api.openai.com/v1 AI_TEST_API_KEY=sk-... \
-  AI_TEST_CHAT_MODEL=gpt-5.4-mini AI_TEST_EMBEDDING_MODEL=text-embedding-3-small \
+  AI_TEST_CHAT_MODEL=gpt-6-luna AI_TEST_EMBEDDING_MODEL=text-embedding-3-small \
   AI_TEST_EMBEDDING_DIMENSIONS=1536 pnpm test
   ```
 

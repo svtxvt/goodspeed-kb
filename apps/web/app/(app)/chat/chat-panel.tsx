@@ -59,7 +59,7 @@ export function ChatPanel({ userId }: { userId: string }) {
     }));
 
     startTransition(async () => {
-      const result = await askQuestion({ question: text, history });
+      const result = await askQuestion({ userId, question: text, history });
       if ('error' in result) {
         setError(result.error); // the question stays in the input
         return;

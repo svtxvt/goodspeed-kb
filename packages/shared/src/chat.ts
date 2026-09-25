@@ -16,6 +16,12 @@ export const chatHistoryMessageSchema = z.object({
  * user/assistant turns are accepted; the server builds the system prompt.
  */
 export const chatRequestSchema = z.object({
+  /**
+   * The user this client-side history belongs to. The API rejects the request
+   * when the token is someone else's (e.g. an old tab after an account switch),
+   * so one user's history is never sent under another user's session.
+   */
+  userId: z.uuid(),
   question: z.string().trim().min(1, 'Ask a question').max(CHAT_LIMITS.questionMax),
   history: z.array(chatHistoryMessageSchema).max(CHAT_LIMITS.historyMessagesMax).default([]),
 });

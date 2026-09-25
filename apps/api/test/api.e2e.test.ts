@@ -163,11 +163,26 @@ describe.skipIf(!available)('API against local Supabase', () => {
       expect(stillThere.body).toMatchObject({ title: 'Alice private plans', version: 1 });
     });
 
+    it("rejects Alice's client-side history sent with Bob's token", async () => {
+      const calls = chat.prompts.length;
+      const res = await api()
+        .post('/chat')
+        .set(as(bob))
+        .send({
+          userId: alice.id,
+          question: 'What is the launch codename?',
+          history: [{ role: 'user', content: 'Alice asked something private' }],
+        });
+      expect(res.status).toBe(409);
+      expect(res.body.error).toBe('session_changed');
+      expect(chat.prompts.length).toBe(calls);
+    });
+
     it("never retrieves Alice's chunks for Bob, via the API or directly", async () => {
       const chat = await api()
         .post('/chat')
         .set(as(bob))
-        .send({ question: 'What is the launch codename and when does it ship?' });
+        .send({ userId: bob.id, question: 'What is the launch codename and when does it ship?' });
       expect(chat.status).toBe(200);
       expect(chat.body).toMatchObject({ grounded: false, citations: [] });
 
@@ -191,7 +206,7 @@ describe.skipIf(!available)('API against local Supabase', () => {
       const res = await api()
         .post('/chat')
         .set(as(alice))
-        .send({ question: 'What is the capital of Peru?' });
+        .send({ userId: alice.id, question: 'What is the capital of Peru?' });
       expect(res.body).toMatchObject({ grounded: false, citations: [] });
       expect(chat.prompts.length).toBe(calls);
     });
@@ -201,6 +216,7 @@ describe.skipIf(!available)('API against local Supabase', () => {
         .post('/chat')
         .set(as(alice))
         .send({
+          userId: alice.id,
           question: 'And when does it ship?',
           history: [
             { role: 'user', content: 'What is the launch codename?' },
@@ -220,7 +236,7 @@ describe.skipIf(!available)('API against local Supabase', () => {
       const chat = await api()
         .post('/chat')
         .set(as(alice))
-        .send({ question: 'What is the launch codename and when does it ship?' });
+        .send({ userId: alice.id, question: 'What is the launch codename and when does it ship?' });
       expect(chat.status).toBe(200);
       expect(chat.body.grounded).toBe(true);
       expect(chat.body.citations[0]).toMatchObject({

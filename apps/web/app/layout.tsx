@@ -10,7 +10,9 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    // Browser extensions (Grammarly, LanguageTool, dark-mode tools) add attributes
+    // to <html> before hydration; this only silences mismatches on this element.
+    <html lang="en" suppressHydrationWarning>
       <body>
         <a
           href="#main"

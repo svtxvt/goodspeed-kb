@@ -12,11 +12,6 @@ instruction, not a guarantee: a model can still make mistakes.
 - **AI:** any OpenAI-compatible provider behind two small interfaces; chat and embeddings are
   configured separately; a clearly labelled mock mode runs everything without an API key
 
-**Walkthroughs:**
-
-- App walkthrough (Loom): _link to be added_
-- How I used AI to build this (Loom): _link to be added_
-
 ---
 
 ## Quick start
